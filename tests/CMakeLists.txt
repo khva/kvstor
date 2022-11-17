@@ -15,3 +15,7 @@ endforeach()
 
 set_property(TARGET kvstor_test PROPERTY CXX_STANDARD 20)
 
+if (UNIX)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+endif (UNIX)
+
