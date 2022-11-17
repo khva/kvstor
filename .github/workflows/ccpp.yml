@@ -1,0 +1,29 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master, base_* ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: cmake
+      run: |
+        sudo apt update
+        sudo apt install mm-common g++-11
+        export CXX=g++-11
+        cmake .
+    - name: make
+      run: |
+       export CXX=g++-11
+       make
+    - name: run_tests
+      run: |
+        pwd
+        kvstor_test --minimal
