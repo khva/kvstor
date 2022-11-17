@@ -26,4 +26,4 @@ jobs:
     - name: run_tests
       run: |
         pwd
-        kvstor_test --minimal
+        ctest --output-on-failure
