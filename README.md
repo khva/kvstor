@@ -1,4 +1,5 @@
-![](https://github.com/khva/kvstor/workflows/ccpp.yml/badge.svg?branch=base_impl)
+![](https://github.com/khva/kvstor/workflows/ccpp.yml/badge.svg)
+
 
 ## Оглавление
 - [Описание](#описание)
