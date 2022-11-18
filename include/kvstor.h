@@ -42,7 +42,7 @@ namespace kvstor
         using time_point_t = clock_t::time_point;
         using duration_t = clock_t::duration;
 
-        storage_t(size_t max_size, duration_t life_time) noexcept;
+        storage_t(size_t max_size, duration_t lifetime) noexcept;
         storage_t(const storage_t &) = delete;
         storage_t(storage_t &&) = delete;
         ~storage_t() noexcept;
@@ -57,14 +57,14 @@ namespace kvstor
         std::optional<value_t> first() const;
         std::optional<value_t> last() const;
 
-        void map(std::function<void (const key_t & key, value_t & value, duration_t life_time)> func);
-        void map(std::function<void (const key_t & key, const value_t & value, duration_t life_time)> func) const;
+        void map(std::function<void (const key_t & key, value_t & value, duration_t lifetime)> func);
+        void map(std::function<void (const key_t & key, const value_t & value, duration_t lifetime)> func) const;
 
         size_t size() const;
         bool empty() const;
 
         size_t max_size() const noexcept;
-        duration_t life_time() const noexcept;
+        duration_t lifetime() const noexcept;
 
         void erase(const key_t& key);
         void clear() noexcept;
@@ -92,17 +92,17 @@ namespace kvstor
         mutable std::mutex  m_lock;
 
         const size_t      m_max_size;
-        const duration_t  m_life_time;
+        const duration_t  m_lifetime;
     };
 
 
     template <class key_type, class value_type, class traits_type>
-    inline storage_t<key_type, value_type, traits_type>::storage_t(size_t max_size, duration_t life_time) noexcept
+    inline storage_t<key_type, value_type, traits_type>::storage_t(size_t max_size, duration_t lifetime) noexcept
     :   m_data()
     ,   m_index()
     ,   m_lock()
     ,   m_max_size(max_size)
-    ,   m_life_time(life_time)
+    ,   m_lifetime(lifetime)
     {
     }
 
@@ -120,7 +120,7 @@ namespace kvstor
         const std::lock_guard guard{ m_lock };
 
         clear_outdated();
-        m_data.emplace_front(std::forward<value_t>(value), key, clock_t::now() + m_life_time);
+        m_data.emplace_front(std::forward<value_t>(value), key, clock_t::now() + m_lifetime);
         auto found = m_index.find(key);
 
         if (found == m_index.end())
@@ -205,7 +205,7 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
-    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, value_t & value, duration_t life_time)> func)
+    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, value_t & value, duration_t lifetime)> func)
     {
         const std::lock_guard guard{ m_lock };
         const time_point_t now = clock_t::now();
@@ -215,14 +215,14 @@ namespace kvstor
             if (item.end_time < now)
                 break;
 
-            const duration_t life_time = item.end_time - now;
-            func(item.key, item.value, life_time);
+            const duration_t lifetime = item.end_time - now;
+            func(item.key, item.value, lifetime);
         }
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, const value_t & value, duration_t life_time)> func) const
+    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, const value_t & value, duration_t lifetime)> func) const
     {
         const std::lock_guard guard{ m_lock };
         const time_point_t now = clock_t::now();
@@ -232,8 +232,8 @@ namespace kvstor
             if (item.end_time < now)
                 break;
 
-            const duration_t life_time = item.end_time - now;
-            func(item.key, item.value, life_time);
+            const duration_t lifetime = item.end_time - now;
+            func(item.key, item.value, lifetime);
         }
     }
 
@@ -272,9 +272,9 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
-    inline storage_t<key_type, value_type, traits_type>::duration_t storage_t<key_type, value_type, traits_type>::life_time() const noexcept
+    inline storage_t<key_type, value_type, traits_type>::duration_t storage_t<key_type, value_type, traits_type>::lifetime() const noexcept
     {
-        return m_life_time;
+        return m_lifetime;
     }
 
 

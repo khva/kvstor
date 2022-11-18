@@ -12,7 +12,7 @@ TEST_CASE("kvstor zero size")
     using stor_t = kvstor::storage_t<long, std::string>;
     stor_t stor{ 0, std::chrono::hours(24) };
     REQUIRE(stor.max_size() == 0);
-    REQUIRE(stor.life_time() == std::chrono::hours(24));
+    REQUIRE(stor.lifetime() == std::chrono::hours(24));
     
     stor.push(1, "10");
     stor.push(2, "20");
@@ -241,10 +241,11 @@ TEST_CASE("kvstor thread-safe")
     constexpr size_t max_count = 20000;
     constexpr size_t half_count = max_count / 2;
     constexpr size_t value_factor = 100;
-    
-    kvstor::storage_t<size_t, size_t> stor{ max_count, std::chrono::hours(24) };
 
-    auto fill_storage = [](kvstor::storage_t<size_t, size_t>& stor, size_t first, size_t last, size_t value_factor)
+    using stor_t = kvstor::storage_t<size_t, size_t>;
+    stor_t stor{ max_count, std::chrono::hours(24) };
+
+    auto fill_storage = [](stor_t & stor, size_t first, size_t last, size_t value_factor)
     {
         for (size_t key = first; key < last; ++key)
         {
