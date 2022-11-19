@@ -13,7 +13,7 @@ TEST_CASE("kvstor zero size")
     stor_t stor{ 0, std::chrono::hours(24) };
     REQUIRE(stor.max_size() == 0);
     REQUIRE(stor.lifetime() == std::chrono::hours(24));
-    
+
     stor.push(1, "10");
     stor.push(2, "20");
     REQUIRE(stor.size() == 0);
@@ -152,7 +152,7 @@ TEST_CASE("kvstor::empty() / clear()")
 
     const std::string s1 = "AAA";
     const std::string s2 = "BBB";
-    
+
     stor.push(s1, s1);
     REQUIRE(!stor.empty());
 

@@ -36,8 +36,8 @@ namespace kvstor
     public:
         using key_t = key_type;
         using value_t = value_type;
-        using hash_t = traits_type::hash_t;
-        using kequal_t = traits_type::kequal_t;
+        using hash_t = typename traits_type::hash_t;
+        using kequal_t = typename traits_type::kequal_t;
         using clock_t = std::chrono::steady_clock;
         using time_point_t = clock_t::time_point;
         using duration_t = clock_t::duration;
@@ -72,16 +72,23 @@ namespace kvstor
     private:
         struct item_t
         {
+            item_t(value_type && value, const key_t & key, time_point_t end_time)
+                : value(std::move(value))
+                , key(key)
+                , end_time(end_time)
+            {
+            }
+
             value_t         value;
             key_t           key;
             time_point_t    end_time;
         };
 
-        using list_alloc_t = typename traits_t<key_t, value_t>::alloc_t<item_t>;
+        using list_alloc_t = typename traits_t<key_t, value_t>::template alloc_t<item_t>;
         using list_t = std::list<item_t, list_alloc_t>;
         using index_item_t = typename list_t::iterator;
         using index_pair_t = std::pair<const key_t, index_item_t>;
-        using index_alloc_t = typename traits_t<key_t, value_t>::alloc_t<index_pair_t>;
+        using index_alloc_t = typename traits_t<key_t, value_t>::template alloc_t<index_pair_t>;
         using index_t = std::unordered_map<key_t, index_item_t, hash_t, kequal_t, index_alloc_t>;
 
         void clear_outdated();
@@ -120,7 +127,7 @@ namespace kvstor
         const std::lock_guard guard{ m_lock };
 
         clear_outdated();
-        m_data.emplace_front(std::forward<value_t>(value), key, clock_t::now() + m_lifetime);
+        m_data.emplace_front(std::move(value), key, clock_t::now() + m_lifetime);
         auto found = m_index.find(key);
 
         if (found == m_index.end())
@@ -272,7 +279,7 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
-    inline storage_t<key_type, value_type, traits_type>::duration_t storage_t<key_type, value_type, traits_type>::lifetime() const noexcept
+    inline typename storage_t<key_type, value_type, traits_type>::duration_t storage_t<key_type, value_type, traits_type>::lifetime() const noexcept
     {
         return m_lifetime;
     }
