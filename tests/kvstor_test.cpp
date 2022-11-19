@@ -5,6 +5,7 @@
 
 #include <future>
 #include <string>
+#include <thread>
 
 
 TEST_CASE("kvstor zero size")

@@ -154,7 +154,7 @@ namespace kvstor
     template <class key_type, class value_type, class traits_type>
     inline void storage_t<key_type, value_type, traits_type>::push(const key_t & key, const value_t & value)
     {
-        push(key, value_t(value));
+        push(key, std::move(value_t(value)));
     }
 
 

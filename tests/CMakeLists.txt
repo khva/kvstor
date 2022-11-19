@@ -13,7 +13,7 @@ foreach(TEST_SOURCE ${TESTS})
     add_test("${TEST_TARGET}" "${TEST_TARGET}" WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} --verbose)
 endforeach()
 
-set_property(TARGET kvstor_test PROPERTY CXX_STANDARD 20)
+set_property(TARGET kvstor_test PROPERTY CXX_STANDARD 17)
 
 if (UNIX)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")

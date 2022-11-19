@@ -11,6 +11,6 @@ target_include_directories(kvstor INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
 
 add_subdirectory(tests)
 
-set_property(TARGET kvstor PROPERTY CXX_STANDARD 20)
+set_property(TARGET kvstor PROPERTY CXX_STANDARD 17)
 
 
