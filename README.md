@@ -1,4 +1,7 @@
-![](https://github.com/khva/kvstor/workflows/C%2FC%2B%2B%20CI/badge.svg?branch=base_impl)
+[![C++](https://img.shields.io/badge/c%2B%2B-17-informational.svg)](https://shields.io/)
+![](https://github.com/khva/kvstor/workflows/linux/badge.svg?branch=base_impl)
+![](https://github.com/khva/kvstor/workflows/macos/badge.svg?branch=base_impl)
+![](https://github.com/khva/kvstor/workflows/windows/badge.svg?branch=base_impl)
 
 
 ## Оглавление
