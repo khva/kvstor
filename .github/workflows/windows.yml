@@ -13,17 +13,13 @@ jobs:
         # windows-2019 has MSVC 2019 installed;
         # windows-2022 has MSVC 2022 installed:
         # https://github.com/actions/virtual-environments.
-        os: [windows-2019]
+        os: [windows-2019, windows-2022]
         platform: [Win32, x64]
-        toolset: [v141, v142]
+        toolset: [v142, v143]
         build_type: [Debug, Release]
         exclude:
-          - { platform: Win32, toolset: v141 }
-        include:
-          - os: windows-2022
-            platform: x64
-            toolset: v143
-            build_type: Debug
+          - { os: windows-2019, toolset: v143 }
+          - { os: windows-2022, toolset: v142 }
 
     steps:
     - uses: actions/checkout@v2
