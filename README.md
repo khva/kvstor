@@ -1,4 +1,7 @@
+# kvstor - защищенное key-value хранилище с ограничением по размеру
+
 [![C++](https://img.shields.io/badge/c%2B%2B-17-informational.svg)](https://shields.io/)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 ![](https://github.com/khva/kvstor/workflows/linux/badge.svg?branch=base_impl)
 ![](https://github.com/khva/kvstor/workflows/macos/badge.svg?branch=base_impl)
 ![](https://github.com/khva/kvstor/workflows/windows/badge.svg?branch=base_impl)
@@ -12,11 +15,11 @@
 
 
 ## Описание
-Библиотека kvstor реализует защищенное key-value хранилище.
+Библиотека kvstor реализует защищенное key-value хранилище с ограничением по размеру.
 
 Основные особенности библиотеки:
  - быстрый доступ к элементам, добавление, удаление, поиск за *O(1)*
- - ограничение размера хранилища (при переполнении наиболее старый элемент замещается новым)
+ - ограничение максимального размера хранилища (при переполнении наиболее старый элемент замещается новым)
  - потокобезопасность (thread-safe)
  - простота подключения (header-only / single-file)
  - отсутствие внешних зависимостей (в коде библиотеки используется только STL)
@@ -111,6 +114,6 @@ item 2 does not exist
 
 
  ## Дополнительно
-  - Библиотека проверялась на компиляторах gcc 11.3, MS Visual Studio 2022 с флагом `CXX_STANDARD 17`
+  - Библиотека проверялась на компиляторах gcc 11.3, Apple clang 13, MS Visual Studio 2019/2022 
   - Минимальная версия CMake 3.12
   - Для тестирования используется фреймворк [doctest](https://github.com/doctest/doctest) версия 2.4.9 (как часть проекта в директории `tests\doctest`)
