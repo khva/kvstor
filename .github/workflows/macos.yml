@@ -29,6 +29,6 @@ jobs:
         threads=`sysctl -n hw.logicalcpu`
         cmake --build . --config ${{matrix.build_type}} --parallel $threads
 
-    - name: Test
+    - name: Run Tests
       working-directory: ${{runner.workspace}}/build
       run: ctest -C ${{matrix.build_type}} --output-on-failure

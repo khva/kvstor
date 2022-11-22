@@ -33,7 +33,7 @@ jobs:
         threads=`nproc`
         cmake --build . --config ${{matrix.build_type}} --parallel $threads
 
-    - name: run_tests
+    - name: Run Tests
       working-directory: ${{runner.workspace}}/build
       run: |
         pwd
