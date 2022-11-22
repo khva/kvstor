@@ -8,19 +8,33 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
     steps:
     - uses: actions/checkout@v2
-    - name: cmake
+    - name: Create Build Environment
       run: |
         sudo apt update
         sudo apt install mm-common g++-11
-        export CXX=g++-11
-        cmake .
-    - name: make
+        cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure
+      working-directory: ${{runner.workspace}}/build
+      env:
+        CXX: g++-11
       run: |
-       export CXX=g++-11
-       make
+        cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} $GITHUB_WORKSPACE
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      run: |
+        threads=`nproc`
+        cmake --build . --config ${{matrix.build_type}} --parallel $threads
+
     - name: run_tests
+      working-directory: ${{runner.workspace}}/build
       run: |
         pwd
-        ctest --output-on-failure
+        ctest -C ${{matrix.build_type}} --output-on-failure
