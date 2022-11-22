@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
-#include <chrono>
 #include <functional>
 #include <list>
 #include <mutex>
@@ -38,11 +38,8 @@ namespace kvstor
         using value_t = value_type;
         using hash_t = typename traits_type::hash_t;
         using kequal_t = typename traits_type::kequal_t;
-        using clock_t = std::chrono::steady_clock;
-        using time_point_t = clock_t::time_point;
-        using duration_t = clock_t::duration;
 
-        storage_t(size_t max_size, duration_t lifetime) noexcept;
+        explicit storage_t(size_t max_size) noexcept;
         storage_t(const storage_t &) = delete;
         storage_t(storage_t &&) = delete;
         ~storage_t() noexcept;
@@ -57,14 +54,12 @@ namespace kvstor
         std::optional<value_t> first() const;
         std::optional<value_t> last() const;
 
-        void map(std::function<void (const key_t & key, value_t & value, duration_t lifetime)> func);
-        void map(std::function<void (const key_t & key, const value_t & value, duration_t lifetime)> func) const;
+        void map(std::function<void (const key_t & key, value_t & value)> func);
+        void map(std::function<void (const key_t & key, const value_t & value)> func) const;
 
-        size_t size() const;
-        bool empty() const;
-
+        size_t size() const noexcept;
+        bool empty() const noexcept;
         size_t max_size() const noexcept;
-        duration_t lifetime() const noexcept;
 
         void erase(const key_t& key);
         void clear() noexcept;
@@ -72,16 +67,14 @@ namespace kvstor
     private:
         struct item_t
         {
-            item_t(value_type && value, const key_t & key, time_point_t end_time)
-                : value(std::move(value))
-                , key(key)
-                , end_time(end_time)
+            item_t(value_type && value, const key_t & key)
+            :   value(std::move(value))
+            ,   key(key)
             {
             }
 
-            value_t         value;
-            key_t           key;
-            time_point_t    end_time;
+            value_t value;
+            key_t   key;
         };
 
         using list_alloc_t = typename traits_t<key_t, value_t>::template alloc_t<item_t>;
@@ -91,25 +84,23 @@ namespace kvstor
         using index_alloc_t = typename traits_t<key_t, value_t>::template alloc_t<index_pair_t>;
         using index_t = std::unordered_map<key_t, index_item_t, hash_t, kequal_t, index_alloc_t>;
 
-        void clear_outdated();
-
         list_t  m_data;
         index_t m_index;
 
         mutable std::mutex  m_lock;
 
-        const size_t      m_max_size;
-        const duration_t  m_lifetime;
+        std::atomic<size_t> m_size;
+        const size_t        m_max_size;
     };
 
 
     template <class key_type, class value_type, class traits_type>
-    inline storage_t<key_type, value_type, traits_type>::storage_t(size_t max_size, duration_t lifetime) noexcept
+    inline storage_t<key_type, value_type, traits_type>::storage_t(size_t max_size) noexcept
     :   m_data()
     ,   m_index()
     ,   m_lock()
+    ,   m_size(0)
     ,   m_max_size(max_size)
-    ,   m_lifetime(lifetime)
     {
     }
 
@@ -126,8 +117,7 @@ namespace kvstor
     {
         const std::lock_guard guard{ m_lock };
 
-        clear_outdated();
-        m_data.emplace_front(std::move(value), key, clock_t::now() + m_lifetime);
+        m_data.emplace_front(std::move(value), key);
         auto found = m_index.find(key);
 
         if (found == m_index.end())
@@ -147,7 +137,8 @@ namespace kvstor
             m_data.pop_back();
         }
 
-        assert(m_data.size() == m_index.size());
+        m_size = m_data.size();
+        assert(m_size == m_index.size());
     }
 
 
@@ -168,10 +159,6 @@ namespace kvstor
             return std::optional<value_t>{};
 
         assert(found->second->key == key);
-        const time_point_t now = clock_t::now();
-
-        if (found->second->end_time <= now)
-            return std::optional<value_t>{};
 
         return std::optional<value_t>{found->second->value};
     }
@@ -182,9 +169,10 @@ namespace kvstor
     {
         const std::lock_guard guard{ m_lock };
 
-        if (m_data.empty())
+        if (m_size == 0)
         {
             assert(m_index.empty());
+            assert(m_data.empty());
             return std::optional<value_t>{};
         }
 
@@ -196,78 +184,49 @@ namespace kvstor
     inline std::optional<value_type> storage_t<key_type, value_type, traits_type>::last() const
     {
         const std::lock_guard guard{ m_lock };
-        const_cast<storage_t<key_type, value_type, traits_type>*>(this)->clear_outdated();
 
-        if (m_data.empty())
+        if (m_size == 0)
         {
             assert(m_index.empty());
+            assert(m_data.empty());
             return std::optional<value_t>{};
         }
 
-        const time_point_t now = clock_t::now();
-        const item_t& first = m_data.back();
-
-        return first.end_time < now ? std::optional<value_t>{} : std::optional<value_t>{ first.value };
+        return std::optional<value_t>{ m_data.back().value };
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, value_t & value, duration_t lifetime)> func)
+    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, value_t & value)> func)
     {
         const std::lock_guard guard{ m_lock };
-        const time_point_t now = clock_t::now();
 
         for (item_t & item : m_data)
-        {
-            if (item.end_time < now)
-                break;
-
-            const duration_t lifetime = item.end_time - now;
-            func(item.key, item.value, lifetime);
-        }
+            func(item.key, item.value);
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, const value_t & value, duration_t lifetime)> func) const
+    void storage_t<key_type, value_type, traits_type>::map(std::function<void (const key_t & key, const value_t & value)> func) const
     {
         const std::lock_guard guard{ m_lock };
-        const time_point_t now = clock_t::now();
 
         for (const item_t & item : m_data)
-        {
-            if (item.end_time < now)
-                break;
-
-            const duration_t lifetime = item.end_time - now;
-            func(item.key, item.value, lifetime);
-        }
+            func(item.key, item.value);
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    size_t storage_t<key_type, value_type, traits_type>::size() const
+    size_t storage_t<key_type, value_type, traits_type>::size() const noexcept
     {
-        const std::lock_guard guard{ m_lock };
-        const_cast<storage_t<key_type, value_type, traits_type> *>(this)->clear_outdated();
-
-        const size_t size = m_data.size();
-        assert(size == m_index.size());
-
-        return size;
+        return m_size;
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    bool storage_t<key_type, value_type, traits_type>::empty() const
+    bool storage_t<key_type, value_type, traits_type>::empty() const noexcept
     {
-        const std::lock_guard guard{ m_lock };
-        const_cast<storage_t<key_type, value_type, traits_type>*>(this)->clear_outdated();
-
-        const bool is_empty = m_data.empty();
-        assert(m_index.empty() == is_empty);
-
-        return is_empty;
+        return m_size == 0;
     }
 
 
@@ -275,13 +234,6 @@ namespace kvstor
     inline size_t storage_t<key_type, value_type, traits_type>::max_size() const noexcept
     {
         return m_max_size;
-    }
-
-
-    template <class key_type, class value_type, class traits_type>
-    inline typename storage_t<key_type, value_type, traits_type>::duration_t storage_t<key_type, value_type, traits_type>::lifetime() const noexcept
-    {
-        return m_lifetime;
     }
 
 
@@ -296,9 +248,10 @@ namespace kvstor
             assert(found->second->key == key);
             m_data.erase(found->second);
             m_index.erase(found);
-        }
 
-        clear_outdated();
+            m_size = m_data.size();
+            assert(m_size == m_index.size());
+        }
     }
 
 
@@ -310,32 +263,13 @@ namespace kvstor
             const std::lock_guard guard{ m_lock };
             m_index.clear();
             m_data.clear();
+            m_size = 0;
         }
         catch (...)
         {
-            // unexpected exception
+            // ignore unexpected exception in release
             assert(false);
         }
     }
-
-
-    template <class key_type, class value_type, class traits_type>
-    void storage_t<key_type, value_type, traits_type>::clear_outdated()
-    {
-        const time_point_t now = clock_t::now();
-
-        while (!m_data.empty())
-        {
-            const item_t & last = m_data.back();
-            if (last.end_time > now)
-                break;
-
-            m_index.erase(last.key);
-            m_data.pop_back();
-        }
-
-        assert(m_data.size() == m_index.size());
-    }
-
 
 }   // namespace kvstor

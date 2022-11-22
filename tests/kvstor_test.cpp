@@ -11,16 +11,16 @@
 TEST_CASE("kvstor zero size")
 {
     using stor_t = kvstor::storage_t<long, std::string>;
-    stor_t stor{ 0, std::chrono::hours(24) };
+    stor_t stor{ 0 };
     REQUIRE(stor.max_size() == 0);
-    REQUIRE(stor.lifetime() == std::chrono::hours(24));
+    REQUIRE(stor.size() == 0);
 
     stor.push(1, "10");
     stor.push(2, "20");
     REQUIRE(stor.size() == 0);
 
     bool no_items = true;
-    auto enum_items = [&no_items](long, std::string, stor_t::duration_t)
+    auto enum_items = [&no_items](long, std::string)
     {
         no_items = false;
     };
@@ -32,7 +32,7 @@ TEST_CASE("kvstor zero size")
 
 TEST_CASE("kvstor::push()")
 {
-    kvstor::storage_t<int, std::string> stor{ 4, std::chrono::hours(24) };
+    kvstor::storage_t<int, std::string> stor{ 4 };
     REQUIRE(stor.size() == 0);
 
     stor.push(1, "10");
@@ -69,7 +69,7 @@ TEST_CASE("kvstor::push()")
 
 TEST_CASE("kvstor::erase()")
 {
-    kvstor::storage_t<size_t, size_t> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<size_t, size_t> stor{ 10 };
 
     stor.push(1, 10);
     stor.push(2, 20);
@@ -86,7 +86,7 @@ TEST_CASE("kvstor::erase()")
 
 TEST_CASE("kvstor::first()")
 {
-    kvstor::storage_t<size_t, std::string> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<size_t, std::string> stor{ 10 };
     REQUIRE(!stor.first().has_value());
 
     stor.push(1, std::string("A"));
@@ -117,7 +117,7 @@ TEST_CASE("kvstor::first()")
 
 TEST_CASE("kvstor::last()")
 {
-    kvstor::storage_t<size_t, std::string> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<size_t, std::string> stor{ 10 };
     REQUIRE(!stor.last().has_value());
 
     stor.push(1, std::string("A"));
@@ -148,7 +148,7 @@ TEST_CASE("kvstor::last()")
 
 TEST_CASE("kvstor::empty() / clear()")
 {
-    kvstor::storage_t<std::string, std::string> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<std::string, std::string> stor{ 10 };
     REQUIRE(stor.empty());
 
     const std::string s1 = "AAA";
@@ -175,14 +175,14 @@ TEST_CASE("kvstor::map()")
 
     list_t data;
 
-    auto dump_data = [&data](int key, int value, stor_t::duration_t)
+    auto dump_data = [&data](int key, const int & value)
     {
         data.emplace_back(key, value);
     };
 
     const list_t expected_1 = { {4, 40}, {3, 30}, {2, 20}, {1, 10}, };
 
-    kvstor::storage_t<int, int> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<int, int> stor{ 10 };
     stor.push(1, 10);
     stor.push(2, 20);
     stor.push(3, 30);
@@ -191,7 +191,7 @@ TEST_CASE("kvstor::map()")
     stor.map(dump_data);
     REQUIRE(data == expected_1);
 
-    auto double_it = [](int, int& value, stor_t::duration_t)
+    auto double_it = [](int, int& value)
     {
         value = 2 * value;
     };
@@ -205,46 +205,16 @@ TEST_CASE("kvstor::map()")
 }
 
 
-TEST_CASE("kvstor time check")
-{
-    kvstor::storage_t<long, long> stor{ 10, std::chrono::milliseconds(500) };
-
-    stor.push(1, 10);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    REQUIRE(stor.find(1).value() == 10);
-
-    stor.push(2, 20);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    REQUIRE(stor.find(1).value() == 10);
-    REQUIRE(stor.find(2).value() == 20);
-    REQUIRE(stor.size() == 2);
-
-    stor.push(3, 30);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    REQUIRE(!stor.find(1).has_value());
-    REQUIRE(stor.find(2).value() == 20);
-    REQUIRE(stor.find(3).value() == 30);
-    REQUIRE(stor.size() == 2);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    REQUIRE(!stor.find(2).has_value());
-    REQUIRE(stor.find(3).value() == 30);
-    REQUIRE(stor.size() == 1);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    REQUIRE(!stor.find(3).has_value());
-    REQUIRE(stor.empty());
-}
-
-
 TEST_CASE("kvstor thread-safe")
 {
     constexpr size_t max_count = 20000;
-    constexpr size_t half_count = max_count / 2;
+    constexpr size_t count_25_percent = max_count / 4;
+    constexpr size_t count_50_percent = max_count / 2;
+    constexpr size_t count_75_percent = 3 * max_count / 4;
     constexpr size_t value_factor = 100;
 
     using stor_t = kvstor::storage_t<size_t, size_t>;
-    stor_t stor{ max_count, std::chrono::hours(24) };
+    stor_t stor{ max_count };
 
     auto fill_storage = [](stor_t & stor, size_t first, size_t last, size_t value_factor)
     {
@@ -255,11 +225,15 @@ TEST_CASE("kvstor thread-safe")
         }
     };
 
-    auto tst1 = std::async(std::launch::async, fill_storage, std::ref(stor), 0, half_count, value_factor);
-    auto tst2 = std::async(std::launch::async, fill_storage, std::ref(stor), half_count, max_count, value_factor);
+    auto f1 = std::async(std::launch::async, fill_storage, std::ref(stor), 0, count_25_percent, value_factor);
+    auto f2 = std::async(std::launch::async, fill_storage, std::ref(stor), count_25_percent, count_50_percent, value_factor);
+    auto f3 = std::async(std::launch::async, fill_storage, std::ref(stor), count_50_percent, count_75_percent, value_factor);
+    auto f4 = std::async(std::launch::async, fill_storage, std::ref(stor), count_75_percent, max_count, value_factor);
 
-    tst1.wait();
-    tst2.wait();
+    f1.wait();
+    f2.wait();
+    f3.wait();
+    f4.wait();
 
     REQUIRE(stor.size() == max_count);
 

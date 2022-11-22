@@ -14,7 +14,6 @@
 Основные особенности библиотеки:
  - быстрый доступ к элементам, добавление, удаление, поиск за *O(1)*
  - ограничение размера хранилища (при переполнении наиболее старый элемент замещается новым)
- - ограничение времени хранения элементов 
  - потокобезопасность (thread-safe)
  - простота подключения (header-only / single-file)
  - отсутствие внешних зависимостей (в коде библиотеки используется только STL)
@@ -27,7 +26,7 @@
 Добавление и поиск элемента:
 ```c++
     // инициализация хранилища с максимальным размером 4 и временем жизни элементов в 24 часа
-    kvstor::storage_t<int, std::string> stor{ 4, std::chrono::hours(24) };
+    kvstor::storage_t<int, std::string> stor{ 4 };
     stor.push(1, "first");
     stor.push(2, "second");
     stor.push(3, "third");
@@ -51,7 +50,7 @@ item 2 has value: second again
 
 Удаление элемента:
 ```c++
-    kvstor::storage_t<int, std::string> stor{ 10, std::chrono::hours(24) };
+    kvstor::storage_t<int, std::string> stor{ 10 };
     stor.push(1, "first");
     stor.push(2, "second");
     stor.push(3, "third");
@@ -69,7 +68,7 @@ item 2 does not exist
 Печать элементов хранилища:
 ```c++
     using stor_t = kvstor::storage_t<long, std::string>;
-    stor_t stor{ 4, std::chrono::hours(24) };
+    stor_t stor{ 4 };
 
     stor.push(1, "first");
     stor.push(2, "second");
@@ -81,7 +80,7 @@ item 2 does not exist
     const size_t size = stor.size();
     size_t count = 0;
 
-    auto print = [size, &count](long key, const std::string& value, [[maybe_unused]] stor_t::duration_t lifetime)
+    auto print = [size, &count](long key, const std::string& value)
     {
         ++count;
         std::cout << "{ " << key << ", " << value << " }" << (count < size ? ", " : " ");
@@ -109,6 +108,6 @@ item 2 does not exist
 
 
  ## Дополнительно
-  - Библиотека проверялась на компиляторах gcc 11.3, MS Visual Studio 2022 с флагом `CXX_STANDARD 20`
+  - Библиотека проверялась на компиляторах gcc 11.3, MS Visual Studio 2022 с флагом `CXX_STANDARD 17`
   - Минимальная версия CMake 3.12
   - Для тестирования используется фреймворк [doctest](https://github.com/doctest/doctest) версия 2.4.9 (как часть проекта в директории `tests\doctest`)
