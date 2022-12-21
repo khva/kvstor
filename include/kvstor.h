@@ -172,7 +172,7 @@ namespace kvstor
         std::optional<value_t>   & expected
     )
     {
-        compare_exchange(key, std::move(value_t(desired)), expected);
+        return compare_exchange(key, std::move(value_t(desired)), expected);
     }
 
 
