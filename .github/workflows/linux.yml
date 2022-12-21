@@ -1,6 +1,6 @@
 name: linux
 
-on: [push, pull_request]
+on: [push]
 
 permissions:
   contents: read
@@ -37,4 +37,4 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       run: |
         pwd
-        ctest -C ${{matrix.build_type}} --output-on-failure
+        ctest -C ${{matrix.build_type}} -V --output-on-failure

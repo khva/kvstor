@@ -67,6 +67,55 @@ TEST_CASE("kvstor::push()")
 }
 
 
+TEST_CASE("kvstor::compare_exchange()")
+{
+    kvstor::storage_t<int, std::string> stor{ 4 };
+
+    auto expected = stor.find(1);
+    REQUIRE(!expected);
+
+    // success: expected and actual objects have no values
+    bool flag = stor.compare_exchange(1, "10", expected);
+    REQUIRE(flag);
+    REQUIRE(!expected);
+    REQUIRE(stor.find(1).value() == "10");
+
+    // fail: expected object have no value, actual have "10" value
+    flag = stor.compare_exchange(1, "100", expected);
+    REQUIRE(!flag);
+    REQUIRE(expected.value() == "10");
+    REQUIRE(stor.find(1).value() == "10");
+
+    stor.push(2, "20");
+    stor.push(1, "11");
+    stor.push(3, "30");
+
+    // fail: expected object have "10" value, actual have "11" value
+    flag = stor.compare_exchange(1, "100", expected);
+    REQUIRE(!flag);
+    REQUIRE(expected.value() == "11");
+    REQUIRE(stor.find(1).value() == "11");
+
+    // success: expected and actual objects have "11" values
+    flag = stor.compare_exchange(1, "100", expected);
+    REQUIRE(flag);
+    REQUIRE(expected.value() == "11");
+    REQUIRE(stor.find(1).value() == "100");
+
+    stor.push(4, "40");
+    stor.push(2, "22");
+    stor.push(5, "50");
+    stor.push(6, "60");
+
+    // fail: expected object have "100" value, actual have no value
+    expected = std::string("100");
+    flag = stor.compare_exchange(1, "111", expected);
+    REQUIRE(!flag);
+    REQUIRE(!expected);
+    REQUIRE(!stor.find(1));
+}
+
+
 TEST_CASE("kvstor::erase()")
 {
     kvstor::storage_t<size_t, size_t> stor{ 10 };

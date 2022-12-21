@@ -1,6 +1,6 @@
 name: windows
 
-on: [push, pull_request]
+on: [push]
 
 permissions:
   contents: read

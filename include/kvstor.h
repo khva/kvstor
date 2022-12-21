@@ -50,6 +50,9 @@ namespace kvstor
         void push(const key_t & key, value_t && value);
         void push(const key_t & key, const value_t & value);
 
+        bool compare_exchange(const key_t & key, value_t && desired, std::optional<value_t> & expected);
+        bool compare_exchange(const key_t & key, const value_t & desired, std::optional<value_t> & expected);
+
         std::optional<value_t> find(const key_t & key) const;
         std::optional<value_t> first() const;
         std::optional<value_t> last() const;
@@ -67,9 +70,15 @@ namespace kvstor
     private:
         struct item_t
         {
-            item_t(value_type && value, const key_t & key)
-            :   value(std::move(value))
-            ,   key(key)
+            item_t(const value_type & value_, const key_t& key_)
+                : value(value_)
+                , key(key_)
+            {
+            }
+
+            item_t(value_type && value_, const key_t & key_)
+            :   value(std::move(value_))
+            ,   key(key_)
             {
             }
 
@@ -83,6 +92,10 @@ namespace kvstor
         using index_pair_t = std::pair<const key_t, index_item_t>;
         using index_alloc_t = typename traits_t<key_t, value_t>::template alloc_t<index_pair_t>;
         using index_t = std::unordered_map<key_t, index_item_t, hash_t, kequal_t, index_alloc_t>;
+
+        void apply_new(const key_t & key, value_t && value, typename index_t::iterator found);
+        void fix_size();
+        bool compare_with(typename index_t::iterator found, std::optional<value_t> & expected);
 
         list_t  m_data;
         index_t m_index;
@@ -117,28 +130,9 @@ namespace kvstor
     {
         const std::lock_guard guard{ m_lock };
 
-        m_data.emplace_front(std::move(value), key);
         auto found = m_index.find(key);
-
-        if (found == m_index.end())
-        {
-            m_index.emplace(key, m_data.begin());
-        }
-        else
-        {
-            assert(found->second->key == key);
-            m_data.erase(found->second);
-            found->second = m_data.begin();
-        }
-
-        if (m_data.size() > m_max_size)
-        {
-            m_index.erase(m_data.back().key);
-            m_data.pop_back();
-        }
-
-        m_size = m_data.size();
-        assert(m_size == m_index.size());
+        apply_new(key, std::move(value), found);
+        fix_size();
     }
 
 
@@ -146,6 +140,39 @@ namespace kvstor
     inline void storage_t<key_type, value_type, traits_type>::push(const key_t & key, const value_t & value)
     {
         push(key, std::move(value_t(value)));
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    bool storage_t<key_type, value_type, traits_type>::compare_exchange
+    (
+        const key_t              & key,
+        value_t                 && desired,
+        std::optional<value_t>   & expected
+    )
+    {
+        const std::lock_guard guard{ m_lock };
+
+        auto found = m_index.find(key);
+        if (!compare_with(found, expected))
+            return false;
+
+        apply_new(key, std::move(desired), found);
+        fix_size();
+
+        return true;
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    inline bool storage_t<key_type, value_type, traits_type>::compare_exchange
+    (
+        const key_t              & key,
+        const value_t            & desired,
+        std::optional<value_t>   & expected
+    )
+    {
+        compare_exchange(key, std::move(value_t(desired)), expected);
     }
 
 
@@ -160,7 +187,7 @@ namespace kvstor
 
         assert(found->second->key == key);
 
-        return std::optional<value_t>{found->second->value};
+        return std::optional<value_t>{ found->second->value };
     }
 
 
@@ -217,14 +244,14 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
-    size_t storage_t<key_type, value_type, traits_type>::size() const noexcept
+    inline size_t storage_t<key_type, value_type, traits_type>::size() const noexcept
     {
         return m_size;
     }
 
 
     template <class key_type, class value_type, class traits_type>
-    bool storage_t<key_type, value_type, traits_type>::empty() const noexcept
+    inline bool storage_t<key_type, value_type, traits_type>::empty() const noexcept
     {
         return m_size == 0;
     }
@@ -256,7 +283,7 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
-    inline void storage_t<key_type, value_type, traits_type>::clear() noexcept
+    void storage_t<key_type, value_type, traits_type>::clear() noexcept
     {
         try
         {
@@ -270,6 +297,73 @@ namespace kvstor
             // ignore unexpected exception in release
             assert(false);
         }
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    void storage_t<key_type, value_type, traits_type>::apply_new
+    (
+        const key_t                  & key,
+        value_t                     && value,
+        typename index_t::iterator     found
+    )
+    {
+        m_data.emplace_front(std::move(value), key);
+
+        if (found == m_index.end())
+        {
+            m_index.emplace(key, m_data.begin());
+        }
+        else
+        {
+            assert(found->second->key == key);
+            m_data.erase(found->second);
+            found->second = m_data.begin();
+        }
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    void storage_t<key_type, value_type, traits_type>::fix_size()
+    {
+        if (m_data.size() > m_max_size)
+        {
+            m_index.erase(m_data.back().key);
+            m_data.pop_back();
+        }
+
+        m_size = m_data.size();
+        assert(m_size == m_index.size());
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    bool storage_t<key_type, value_type, traits_type>::compare_with
+    (
+        typename index_t::iterator    found,
+        std::optional<value_t>      & expected
+    )
+    {
+        if (found == m_index.end() || !expected)
+        {
+            if (found == m_index.end() && !expected)
+                return true;
+
+            if (expected)
+            {
+                expected.reset();
+                return false;
+            }
+
+            expected = found->second->value;
+            return false;
+        }
+
+        if (*expected == found->second->value)
+            return true;
+
+        expected = found->second->value;
+        return false;
     }
 
 }   // namespace kvstor
