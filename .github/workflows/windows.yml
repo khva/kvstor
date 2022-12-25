@@ -1,6 +1,6 @@
 name: windows
 
-on: [push, pull_request]
+on: [push]
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
           - { os: windows-2022, toolset: v142 }
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{runner.workspace}}/build

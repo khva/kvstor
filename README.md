@@ -2,9 +2,9 @@
 
 [![C++](https://img.shields.io/badge/c%2B%2B-17-informational.svg)](https://shields.io/)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
-![](https://github.com/khva/kvstor/workflows/linux/badge.svg?branch=base_impl)
-![](https://github.com/khva/kvstor/workflows/macos/badge.svg?branch=base_impl)
-![](https://github.com/khva/kvstor/workflows/windows/badge.svg?branch=base_impl)
+![](https://github.com/khva/kvstor/workflows/linux/badge.svg)
+![](https://github.com/khva/kvstor/workflows/macos/badge.svg)
+![](https://github.com/khva/kvstor/workflows/windows/badge.svg)
 
 
 ## Оглавление
@@ -28,10 +28,11 @@
 
 ## Примеры использования
 Класс реализующий хранилище `kvstor::storage_t<>` находится в заголовке `include/kvstor.h`.
+**Важно:** для типа-значения *value_type* должны быть определены операции равенства и не равенства (*operator==() / operator!=()*).
 
 Добавление и поиск элемента:
 ```c++
-    // инициализация хранилища с максимальным размером 4 и временем жизни элементов в 24 часа
+    // инициализация хранилища с максимальным размером 4
     kvstor::storage_t<int, std::string> stor{ 4 };
     stor.push(1, "first");
     stor.push(2, "second");
@@ -54,6 +55,7 @@ item 1 does not exist
 item 2 has value: second again
 ```
 
+
 Удаление элемента:
 ```c++
     kvstor::storage_t<int, std::string> stor{ 10 };
@@ -70,6 +72,24 @@ item 2 has value: second again
 ```
 item 2 does not exist
 ```
+
+
+Добавление элемента с проверкой, что значение элемента не изменилось с прошлого обращения:
+
+```c++
+    kvstor::storage_t<int, std::string> stor{ 10 };
+	auto expected = stor.find(1); // пустое значение, элемента по ключу 1 нет
+
+	bool flag = stor.compare_exchange(1, "10", expected);
+    // успешно: expected остается пустым, по ключу 1 находится значение "10"
+
+	flag = stor.compare_exchange(1, "11", expected);
+	// неуспешно: expected теперь содержит "10" - текущее значение элемента с ключом 1
+
+	flag = stor.compare_exchange(1, "11", expected);
+	// теперь успешно: expected по-прежнему содержит "10", а по ключу 1 находится новое значение "11"
+```
+
 
 Печать элементов хранилища:
 ```c++
@@ -100,6 +120,7 @@ item 2 does not exist
 ```
 { { 5, fourth }, { 4, fourth }, { 2, second again }, { 3, third } }
 ```
+
 
 ## Как добавить библиотеку в ваш проект
 Весь код библиотеки содержится в одном файле `include/kvstor.h`. Наиболее простой способ добавления библиотеки в ваш проект:
