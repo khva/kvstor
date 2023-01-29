@@ -44,11 +44,11 @@ stor.push(5, "fourth");  // пара {1, "first"} будет замещена н
 
 const auto first = stor.find(1);
 if (!first)
-	std::cout << "item 1 does not exist" << std::endl;
+    std::cout << "item 1 does not exist" << std::endl;
 
 const auto second = stor.find(2);
 if (second)
-	std::cout << "item 2 has value: " << *second << std::endl;
+    std::cout << "item 2 has value: " << *second << std::endl;
 ```
 В результате выполнения будет выведено:
 ```
