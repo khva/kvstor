@@ -28,26 +28,27 @@
 
 ## Примеры использования
 Класс реализующий хранилище `kvstor::storage_t<>` находится в заголовке `include/kvstor.h`.
+
 **Важно:** для типа-значения *value_type* должны быть определены операции равенства и не равенства (*operator==() / operator!=()*).
 
 Добавление и поиск элемента:
 ```c++
-    // инициализация хранилища с максимальным размером 4
-    kvstor::storage_t<int, std::string> stor{ 4 };
-    stor.push(1, "first");
-    stor.push(2, "second");
-    stor.push(3, "third");
-    stor.push(2, "second again");  // по ключу 2 будет новое значение "second again"
-    stor.push(4, "fourth");
-    stor.push(5, "fourth");  // пара {1, "first"} будет замещена новой
+// инициализация хранилища с максимальным размером 4
+kvstor::storage_t<int, std::string> stor{ 4 };
+stor.push(1, "first");
+stor.push(2, "second");
+stor.push(3, "third");
+stor.push(2, "second again");  // по ключу 2 будет новое значение "second again"
+stor.push(4, "fourth");
+stor.push(5, "fourth");  // пара {1, "first"} будет замещена новой
 
-    const auto first = stor.find(1);
-    if (!first)
-        std::cout << "item 1 does not exist" << std::endl;
+const auto first = stor.find(1);
+if (!first)
+	std::cout << "item 1 does not exist" << std::endl;
 
-    const auto second = stor.find(2);
-    if (second)
-        std::cout << "item 2 has value: " << *second << std::endl;
+const auto second = stor.find(2);
+if (second)
+	std::cout << "item 2 has value: " << *second << std::endl;
 ```
 В результате выполнения будет выведено:
 ```
@@ -58,15 +59,15 @@ item 2 has value: second again
 
 Удаление элемента:
 ```c++
-    kvstor::storage_t<int, std::string> stor{ 10 };
-    stor.push(1, "first");
-    stor.push(2, "second");
-    stor.push(3, "third");
+kvstor::storage_t<int, std::string> stor{ 10 };
+stor.push(1, "first");
+stor.push(2, "second");
+stor.push(3, "third");
 
-    stor.erase(2);
-    const auto second = stor.find(2);
-    if (!second)
-        std::cout << "item 2 does not exist" << std::endl;
+stor.erase(2);
+const auto second = stor.find(2);
+if (!second)
+    std::cout << "item 2 does not exist" << std::endl;
 ```
 В результате выполнения будет выведено:
 ```
@@ -77,49 +78,50 @@ item 2 does not exist
 Добавление элемента с проверкой, что значение элемента не изменилось с прошлого обращения:
 
 ```c++
-    kvstor::storage_t<int, std::string> stor{ 10 };
-	auto expected = stor.find(1); // пустое значение, элемента по ключу 1 нет
+kvstor::storage_t<int, std::string> stor{ 10 };
+auto expected = stor.find(1); // пустое значение, элемента по ключу 1 нет
 
-	bool flag = stor.compare_exchange(1, "10", expected);
-    // успешно: expected остается пустым, по ключу 1 находится значение "10"
+bool flag = stor.compare_exchange(1, "10", expected);
+// успешно: expected остается пустым, по ключу 1 находится значение "10"
 
-	flag = stor.compare_exchange(1, "11", expected);
-	// неуспешно: expected теперь содержит "10" - текущее значение элемента с ключом 1
+flag = stor.compare_exchange(1, "11", expected);
+// неуспешно: expected теперь содержит "10" - текущее значение элемента с ключом 1
 
-	flag = stor.compare_exchange(1, "11", expected);
-	// теперь успешно: expected по-прежнему содержит "10", а по ключу 1 находится новое значение "11"
+flag = stor.compare_exchange(1, "11", expected);
+// теперь успешно: expected по-прежнему содержит "10", а по ключу 1 находится новое значение "11"
 ```
 
 
 Печать элементов хранилища:
 ```c++
-    using stor_t = kvstor::storage_t<long, std::string>;
-    stor_t stor{ 4 };
+using stor_t = kvstor::storage_t<long, std::string>;
+stor_t stor{ 4 };
 
-    stor.push(1, "first");
-    stor.push(2, "second");
-    stor.push(3, "third");
-    stor.push(2, "second again");
-    stor.push(4, "fourth");
-    stor.push(5, "fourth");
+stor.push(1, "first");
+stor.push(2, "second");
+stor.push(3, "third");
+stor.push(2, "second again");
+stor.push(4, "fourth");
+stor.push(5, "fourth");
 
-    const size_t size = stor.size();
-    size_t count = 0;
+const size_t size = stor.size();
+size_t count = 0;
 
-    auto print = [size, &count](long key, const std::string& value)
-    {
-        ++count;
-        std::cout << "{ " << key << ", " << value << " }" << (count < size ? ", " : " ");
-    };
+auto print = [size, &count](long key, const std::string& value)
+{
+    ++count;
+    std::cout << "{ " << key << ", " << value << " }" << (count < size ? ", " : " ");
+};
 
-    std::cout << "{ ";
-    stor.map(print);
-    std::cout << "}" << std::endl;
+std::cout << "{ ";
+stor.map(print);
+std::cout << "}" << std::endl;
 ```
 В результате выполнения будет выведено:
 ```
 { { 5, fourth }, { 4, fourth }, { 2, second again }, { 3, third } }
 ```
+Обратите внимание, что элементы идут в обратном порядке попадания в хранилище (наиболее новые сначала).
 
 
 ## Как добавить библиотеку в ваш проект
@@ -128,13 +130,12 @@ item 2 does not exist
  - добавить в настройках проекта путь к `kvstor.h`, например для CMake проекта: `include_directories(third_party/kvstor)`
 
 Также библиотеку можно добавить как cабмодуль:
- - `git submodule add https://github.com/khva/kvstor`
- - `git add .`
- - `git commit -m "add kvstor module"`
- - `git push origin master`
+```bash
+git submodule add https://github.com/khva/kvstor third_party/kvstor
+```
 
 
- ## Дополнительно
-  - Библиотека проверялась на компиляторах gcc 11.3, Apple clang 13, MS Visual Studio 2019/2022 
-  - Минимальная версия CMake 3.12
-  - Для тестирования используется фреймворк [doctest](https://github.com/doctest/doctest) версия 2.4.9 (как часть проекта в директории `tests\doctest`)
+## Дополнительно
+ - Библиотека проверялась на компиляторах gcc 11.3, Apple clang 13, MS Visual Studio 2019/2022
+ - Минимальная версия CMake 3.12
+ - Для тестирования используется фреймворк [doctest](https://github.com/doctest/doctest) версия 2.4.9 (как часть проекта в директории `tests/doctest`)
