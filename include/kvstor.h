@@ -10,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 
 namespace kvstor
@@ -40,6 +41,7 @@ namespace kvstor
         using kequal_t = typename traits_type::kequal_t;
 
         explicit storage_t(size_t max_size) noexcept;
+        storage_t(const std::vector<std::pair<key_t, value_t>> & dump_data, size_t max_size);
         storage_t(const storage_t &) = delete;
         storage_t(storage_t &&) = delete;
         ~storage_t() noexcept;
@@ -66,6 +68,8 @@ namespace kvstor
 
         void erase(const key_t& key);
         void clear() noexcept;
+
+        std::vector<std::pair<key_t, value_t>> dump() const;
 
     private:
         struct item_t
@@ -95,6 +99,7 @@ namespace kvstor
 
         void apply_new(const key_t & key, value_t && value, typename index_t::iterator found);
         void fix_size();
+        void build_from_dump(const std::vector<std::pair<key_t, value_t>> & dump_data);
         bool compare_with(typename index_t::iterator found, std::optional<value_t> & expected);
 
         list_t  m_data;
@@ -115,6 +120,18 @@ namespace kvstor
     ,   m_size(0)
     ,   m_max_size(max_size)
     {
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    inline storage_t<key_type, value_type, traits_type>::storage_t
+    (
+        const std::vector<std::pair<key_t, value_t>>  & dump_data,
+        size_t                                          max_size
+    )
+    :   storage_t(max_size)
+    {
+        build_from_dump(dump_data);
     }
 
 
@@ -301,6 +318,23 @@ namespace kvstor
 
 
     template <class key_type, class value_type, class traits_type>
+    std::vector<std::pair<key_type, value_type>> storage_t<key_type, value_type, traits_type>::dump() const
+    {
+        std::vector<std::pair<key_t, value_t>> dump_data;
+        dump_data.reserve(size());
+
+        auto do_dump = [&dump_data](key_t key, const value_t& value)
+        {
+            dump_data.emplace_back(key, value);
+        };
+
+        map(do_dump);
+
+        return dump_data;
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
     void storage_t<key_type, value_type, traits_type>::apply_new
     (
         const key_t                  & key,
@@ -334,6 +368,24 @@ namespace kvstor
 
         m_size = m_data.size();
         assert(m_size == m_index.size());
+    }
+
+
+    template <class key_type, class value_type, class traits_type>
+    void storage_t<key_type, value_type, traits_type>::build_from_dump
+    (
+        const std::vector<std::pair<key_t, value_t>> & dump_data
+    )
+    {
+        for (auto it = dump_data.rbegin(); it < dump_data.rend(); ++it)
+        {
+            const key_type& key = it->first;
+            value_t value = it->second;
+            const auto found = m_index.find(key);
+
+            apply_new(key, std::move(value), found);
+            fix_size();
+        }
     }
 
 
