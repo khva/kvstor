@@ -377,9 +377,12 @@ namespace kvstor
         const std::vector<std::pair<key_t, value_t>> & dump_data
     )
     {
-        for (auto it = dump_data.rbegin(); it < dump_data.rend(); ++it)
+        const size_t dump_size = dump_data.size();
+        const size_t offset = dump_size < m_max_size ? 0 : dump_size - m_max_size;
+
+        for (auto it = dump_data.rbegin() + offset; it < dump_data.rend(); ++it)
         {
-            const key_type& key = it->first;
+            const key_type & key = it->first;
             value_t value = it->second;
             const auto found = m_index.find(key);
 
