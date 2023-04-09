@@ -231,7 +231,7 @@ TEST_CASE("kvstor::map()")
 
     const list_t expected_1 = { {4, 40}, {3, 30}, {2, 20}, {1, 10}, };
 
-    kvstor::storage_t<int, int> stor{ 10 };
+    stor_t stor{ 10 };
     stor.push(1, 10);
     stor.push(2, 20);
     stor.push(3, 30);
@@ -251,6 +251,98 @@ TEST_CASE("kvstor::map()")
     data.clear();
     stor.map(dump_data);
     REQUIRE(data == expected_2);
+}
+
+
+TEST_CASE("kvstor::dump()")
+{
+    using arr_t = std::vector<std::pair<int, int>>;
+    using stor_t = kvstor::storage_t<int, int>;
+
+    const arr_t expected = { {4, 40}, {3, 30}, {2, 20}, {1, 10}, };
+    stor_t stor{ 10 };
+
+    const arr_t empty_dump = stor.dump();
+    REQUIRE(empty_dump.empty());
+
+    stor.push(1, 10);
+    stor.push(2, 20);
+    stor.push(3, 30);
+    stor.push(4, 40);
+
+    const arr_t dump_data = stor.dump();
+    REQUIRE(dump_data == expected);
+}
+
+
+TEST_CASE("kvstor::dump & build a zero storage")
+{
+    using arr_t = std::vector<std::pair<int, int>>;
+    using stor_t = kvstor::storage_t<int, int>;
+
+    stor_t stor_0{ 0 };
+
+    const arr_t empty_dump = stor_0.dump();
+    REQUIRE(empty_dump.empty());
+
+    stor_0.push(1, 10);
+    stor_0.push(2, 20);
+    stor_0.push(3, 30);
+
+    const arr_t dump_data = stor_0.dump();
+    REQUIRE(dump_data.empty());
+
+    const arr_t dum_data = { {4, 40}, {3, 30}, {2, 20}, {1, 10}, };
+    const stor_t stor_0_new(dump_data, 0);
+    REQUIRE(stor_0_new.empty());
+}
+
+
+TEST_CASE("kvstor::build_from_dump()")
+{
+    using arr_t = std::vector<std::pair<int, int>>;
+    using stor_t = kvstor::storage_t<int, int>;
+
+    const arr_t dump_data = { {4, 40}, {3, 30}, {2, 20}, {1, 10}, };
+
+    const stor_t stor_10{ dump_data, 10 };
+    REQUIRE(stor_10.size() == dump_data.size());
+
+    bool is_equal = true;
+    size_t index = 0;
+    auto compare = [&dump_data, &index, &is_equal](int key, const int& value)
+    {
+        const auto& item = dump_data.at(index);
+
+        if (item.first != key || item.second != value)
+            is_equal = false;
+
+        ++index;
+    };
+
+    stor_10.map(compare);
+    REQUIRE(is_equal);
+
+    const stor_t stor_4{ dump_data, 4 };
+    REQUIRE(stor_4.size() == dump_data.size());
+
+    is_equal = true;
+    index = 0;
+
+    stor_4.map(compare);
+    REQUIRE(is_equal);
+
+    const stor_t stor_2{ dump_data, 2 };
+    REQUIRE(stor_2.size() == 2);
+
+    is_equal = true;
+    index = 0;
+
+    stor_2.map(compare);
+    REQUIRE(is_equal);
+
+    const stor_t stor_10_empty{ arr_t{}, 10 };
+    REQUIRE(stor_10_empty.empty());
 }
 
 
